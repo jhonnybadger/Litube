@@ -328,7 +328,11 @@ public class Engine {
 		return queueRepository.containsVideo(watchId);
 	}
 
-	public void play(@NonNull PlaybackDetails details) {
+		public void play(@NonNull PlaybackDetails details) {
+		play(details, -1L);
+	}
+
+	public void play(@NonNull PlaybackDetails details, long startPositionMs) {
 		VideoDetails video = details.video();
 		PlaybackPlan plan = details.plan();
 		List<SubtitlesStream> subtitles = details.subtitles();
@@ -357,10 +361,12 @@ public class Engine {
 		this.player.setPlaybackParameters(new PlaybackParameters(this.prefs.getSpeed()));
 
 		// Resume position
-		if (prefs.getExtensionManager().isEnabled(Constant.REMEMBER_LAST_POSITION)) {
-			long resumePos = prefs.getResumePosition(videoId);
-			if (resumePos > SAFE_ZONE_MS && resumePos < duration - SAFE_ZONE_MS) {
-				this.player.seekTo(resumePos);
+		if (startPositionMs > 0L) {
+		this.player.seekTo(startPositionMs);
+		} else if (prefs.getExtensionManager().isEnabled(Constant.REMEMBER_LAST_POSITION)) {
+		long resumePos = prefs.getResumePosition(videoId);
+		if (resumePos > SAFE_ZONE_MS && resumePos < duration - SAFE_ZONE_MS) {
+			this.player.seekTo(resumePos);
 			}
 		}
 
@@ -943,7 +949,11 @@ public class Engine {
 		return plan != null && (plan.getMode() == PlaybackMode.LIVE_DASH
 						|| plan.getMode() == PlaybackMode.LIVE_HLS);
 	}
-
+	
+	public static boolean isHttp403(@NonNull Throwable throwable) {
+		return playbackRecoveryReason(throwable) == PlaybackRecoveryReason.HTTP_403;
+	}
+	
 	@Nullable
 	static PlaybackRecoveryReason playbackRecoveryReason(@NonNull Throwable throwable) {
 		List<Throwable> pending = new ArrayList<>();

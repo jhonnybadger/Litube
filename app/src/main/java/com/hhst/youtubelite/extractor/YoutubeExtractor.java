@@ -113,7 +113,14 @@ public final class YoutubeExtractor {
 		this.gson = gson;
 		this.auth = auth;
 	}
-
+	
+	/**
+	 * Drops cached stream URLs so the next getInfo call extracts fresh ones.
+	 */
+	public void invalidatePlayback(@NonNull String videoId) {
+		cache.invalidatePlaybackDetails(videoId);
+	}
+	
 	@Nullable
 	public static String getVideoId(@Nullable String url) {
 		if (url == null) return null;

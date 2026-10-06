@@ -97,6 +97,9 @@ public class LitePlayer {
 	@Nullable
 	private volatile String activeId;
 	@Nullable
+	private String reextractedId;
+	private volatile long pendingStartMs = -1L;
+	@Nullable
 	private ExtractionSession extractSession;
 	@Nullable
 	private Runnable onRestore;
@@ -167,6 +170,7 @@ public class LitePlayer {
 			@Override
 			public void onPlaybackStateChanged(int state) {
 				if (state == Player.STATE_READY) {
+					reextractedId = null;
 					updateServiceProgress(engine.isPlaying());
 				}
 			}
@@ -176,11 +180,27 @@ public class LitePlayer {
 				if (engine.recoverFromPlaybackError(error)) {
 					return;
 				}
+				if (retryWithFreshStreams(error)) {
+					return;
+				}
 				ErrorDialog.show(activity, error.getMessage(), error);
 			}
 		});
 	}
-
+	
+	private boolean retryWithFreshStreams(@NonNull PlaybackException error) {
+		String id = activeId;
+		if (id == null || !Engine.isHttp403(error) || id.equals(reextractedId)) {
+			return false;
+		}
+		reextractedId = id;
+		pendingStartMs = Math.max(0L, engine.position());
+		extractor.invalidatePlayback(id);
+		queuedId = null;
+		play("https://www.youtube.com/watch?v=" + id);
+		return true;
+	}
+	
 	private void saveSelectedTrackLanguage(Tracks tracks) {
 		try {
 			for (Tracks.Group group : tracks.getGroups()) {
@@ -224,6 +244,8 @@ public class LitePlayer {
 		String videoId = YoutubeExtractor.getVideoId(url);
 		if (videoId == null || Objects.equals(this.queuedId, videoId)) return;
 		this.queuedId = videoId;
+		final long startMs = pendingStartMs;
+		pendingStartMs = -1L;
 
 		activity.runOnUiThread(() -> {
 			engine.clear();
@@ -273,7 +295,7 @@ public class LitePlayer {
 							playerView.updateSkipMarkers(er.video().getDuration(), TimeUnit.SECONDS);
 
 							try {
-								engine.play(er);
+								engine.play(er, startMs);
 							} catch (IllegalArgumentException e) {
 								ErrorDialog.show(activity, e.getMessage(), e);
 								return;

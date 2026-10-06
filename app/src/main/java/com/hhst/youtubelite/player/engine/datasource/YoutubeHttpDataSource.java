@@ -438,8 +438,8 @@ public final class YoutubeHttpDataSource extends BaseDataSource implements HttpD
 			readTimeoutMs = DEFAULT_READ_TIMEOUT_MILLIS;
 			allowCrossProtocolRedirects = false;
 			keepPostFor302Redirects = false;
-			rangeParameterEnabled = false;
-			rnParameterEnabled = false;
+			rangeParameterEnabled = true;
+			rnParameterEnabled = true;
 		}
 
 		@NonNull
